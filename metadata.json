@@ -1,0 +1,6 @@
+{
+  "name": "Cycle Rush",
+  "description": "Ride Fast. Dodge Smart. Power Through. A 3D endless cycling arcade game with realistic cyclist kinematics, dynamic environments, power-ups, missions, and unlockable gear.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
