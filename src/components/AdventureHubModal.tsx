@@ -50,7 +50,7 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-20 flex flex-col justify-between p-4 sm:p-6 lg:p-8 overflow-y-auto"
+      className="fixed inset-0 z-20 flex flex-col justify-between p-3 sm:p-5 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-label="Adventure Mode Hub"
@@ -60,7 +60,7 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(90deg, rgba(2,6,23,0.92) 0%, rgba(2,6,23,0.72) 52%, rgba(2,6,23,0.06) 100%)',
+            'linear-gradient(90deg, rgba(2,6,23,0.92) 0%, rgba(2,6,23,0.72) 50%, rgba(2,6,23,0.08) 100%)',
         }}
       />
 
@@ -118,9 +118,9 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
       </div>
 
       {/* Center Content Split: Left Control & Level Deck + Right Live 3D Preview Info */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 my-auto py-4">
-        {/* Left 7 columns: Quick Actions + Tabs + Level/Challenge Cards */}
-        <div className="lg:col-span-7 flex flex-col gap-4 bg-slate-950/90 border border-white/15 rounded-2xl p-4 sm:p-5">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 my-auto py-2">
+        {/* Left column: Quick Actions + Tabs + Level/Challenge Cards */}
+        <div className="lg:col-span-7 xl:col-span-6 flex flex-col gap-3 bg-slate-950/95 border border-white/15 rounded-2xl p-3.5 sm:p-4">
           {/* Primary Continue / New Adventure Actions */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <button
@@ -190,7 +190,7 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
 
           {/* Cards Grid */}
           {activeTab === 'levels' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[42vh] lg:max-h-[54vh] overflow-y-auto pr-1 custom-scroll">
               {ADVENTURE_CAMPAIGN_LEVELS.map((lvl) => {
                 const area = getAdventureAreaSpec(lvl.areaId);
                 const unlocked = lvl.index <= adv.unlockedLevelIndex;
@@ -204,10 +204,10 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
                     disabled={!unlocked}
                     onMouseEnter={() => onSelectPreviewArea(lvl.areaId)}
                     onClick={() => unlocked && onStartLevel(lvl.id)}
-                    className={`flex flex-col justify-between p-3 rounded-xl border text-left transition-all ${
+                    className={`flex flex-col justify-between p-3 rounded-xl border text-left transition-colors ${
                       unlocked
-                        ? 'bg-slate-900/90 hover:bg-slate-800/90 border-white/15 hover:border-amber-400/60 cursor-pointer'
-                        : 'bg-slate-900/45 border-white/5 opacity-60 cursor-not-allowed'
+                        ? 'bg-slate-900 hover:bg-slate-800 border-white/15 hover:border-amber-400/60 cursor-pointer'
+                        : 'bg-slate-900/95 border-white/10 text-slate-400 cursor-not-allowed'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -261,7 +261,7 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
               })}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[42vh] lg:max-h-[54vh] overflow-y-auto pr-1 custom-scroll">
               {ADVENTURE_CHALLENGES.map((ch) => {
                 const area = getAdventureAreaSpec(ch.areaId);
                 const stars = adv.starsByLevel[ch.id] ?? 0;
@@ -272,7 +272,7 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
                     type="button"
                     onMouseEnter={() => onSelectPreviewArea(ch.areaId)}
                     onClick={() => onStartLevel(ch.id)}
-                    className="flex flex-col justify-between p-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-white/15 hover:border-cyan-400/60 text-left transition-all cursor-pointer"
+                    className="flex flex-col justify-between p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/15 hover:border-cyan-400/60 text-left transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -321,18 +321,18 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
           )}
         </div>
 
-        {/* Right 5 columns: Live 3D Environment Preview Selector & Records */}
-        <div className="lg:col-span-5 flex flex-col justify-between gap-4 pointer-events-none">
-          <div className="pointer-events-auto bg-slate-950/85 border border-white/15 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-300">
-                <Eye className="w-4 h-4" />
+        {/* Right column: Compact Live 3D Preview + Stunt Records at top so cyclist stays unobstructed below */}
+        <div className="lg:col-span-5 xl:col-span-6 flex flex-col justify-start gap-2.5 pointer-events-none">
+          <div className="pointer-events-auto bg-slate-950/90 border border-white/15 rounded-2xl p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-cyan-300">
+                <Eye className="w-3.5 h-3.5" />
                 <span>Live 3D Terrain Preview</span>
               </div>
               <span className="text-[11px] text-slate-400">{previewArea.difficultyLabel}</span>
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div className="flex flex-wrap gap-1.5 mb-2">
               {ADVENTURE_AREAS.map((area) => {
                 const selected = area.id === previewAreaId;
                 return (
@@ -340,7 +340,7 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
                     key={area.id}
                     type="button"
                     onClick={() => onSelectPreviewArea(area.id)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                       selected
                         ? 'bg-amber-500 text-slate-950'
                         : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/10'
@@ -352,34 +352,38 @@ export const AdventureHubModal: React.FC<AdventureHubModalProps> = ({
               })}
             </div>
 
-            <div className="text-sm font-display font-bold text-white">
-              {previewArea.name}
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="text-sm font-display font-bold text-white">
+                {previewArea.name}
+              </div>
+              <p className="text-[11px] text-slate-300">{previewArea.subtitle}</p>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">{previewArea.subtitle}</p>
           </div>
 
-          {/* Stunt Records Summary */}
-          <div className="pointer-events-auto mt-auto bg-slate-950/85 border border-white/15 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-300 mb-2.5">
-              <Award className="w-4 h-4" />
-              <span>Adventure Stunt Records</span>
+          {/* Compact Stunt Records Bar */}
+          <div className="pointer-events-auto bg-slate-950/90 border border-white/15 rounded-2xl p-3">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                <Award className="w-3.5 h-3.5" />
+                <span>Adventure Stunt Records</span>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-slate-900/90 rounded-lg p-2 border border-white/10">
+              <div className="bg-slate-900 rounded-lg py-1.5 px-2 border border-white/10">
                 <div className="text-[10px] text-slate-400 uppercase">Longest Wheelie</div>
-                <div className="font-mono-tabular font-bold text-sm text-white">
+                <div className="font-mono-tabular font-bold text-xs sm:text-sm text-white">
                   {adv.longestWheelieSeconds.toFixed(1)}s
                 </div>
               </div>
-              <div className="bg-slate-900/90 rounded-lg p-2 border border-white/10">
+              <div className="bg-slate-900 rounded-lg py-1.5 px-2 border border-white/10">
                 <div className="text-[10px] text-slate-400 uppercase">Longest Jump</div>
-                <div className="font-mono-tabular font-bold text-sm text-cyan-300">
+                <div className="font-mono-tabular font-bold text-xs sm:text-sm text-cyan-300">
                   {adv.longestJumpMeters.toFixed(1)}m
                 </div>
               </div>
-              <div className="bg-slate-900/90 rounded-lg p-2 border border-white/10">
+              <div className="bg-slate-900 rounded-lg py-1.5 px-2 border border-white/10">
                 <div className="text-[10px] text-slate-400 uppercase">Highest Air</div>
-                <div className="font-mono-tabular font-bold text-sm text-amber-300">
+                <div className="font-mono-tabular font-bold text-xs sm:text-sm text-amber-300">
                   {adv.highestJumpMeters.toFixed(1)}m
                 </div>
               </div>

@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import {
   computeLevelStars,
   getAdventureAreaSpec,
@@ -61,11 +65,18 @@ import type {
   RunSnapshot,
 } from '../types';
 import {
+  ZERO_MOTION_BLUR,
+  computeMotionBlurState,
+  dampMotionBlurState,
+  type MotionBlurState,
+} from '../motionBlur';
+import {
   buildAdventureWorldVisuals,
   type AdventureWorldVisuals,
 } from './adventureWorld';
 import { CyclistRig } from './cyclistModel';
 import { EnvironmentBuilder, type RoadSegmentObj } from './environmentBuilder';
+import { createMotionBlurPass, syncMotionBlurPass } from './motionBlurPass';
 import { AssetFactory } from './obstaclesAndPickups';
 import { createContactShadowTexture } from './textures';
 
@@ -142,6 +153,9 @@ export class GameEngine {
   private renderer!: THREE.WebGLRenderer;
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
+  private composer: EffectComposer | null = null;
+  private motionBlurPass: ShaderPass | null = null;
+  private motionBlurState: MotionBlurState = { ...ZERO_MOTION_BLUR };
   private isSoftwareGl = false;
 
   private sunLight!: THREE.DirectionalLight;
@@ -522,7 +536,14 @@ export class GameEngine {
     this.particleMesh.instanceColor.needsUpdate = true;
     this.scene.add(this.particleMesh);
 
+    this.motionBlurPass = createMotionBlurPass();
     if (!this.isSoftwareGl) {
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.composer.setSize(width, height);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.composer.addPass(this.motionBlurPass);
+      this.composer.addPass(new OutputPass());
       this.renderer.compile(this.scene, this.camera);
     }
   }
@@ -752,10 +773,11 @@ export class GameEngine {
 
     document.body.dataset.state = 'playing';
     document.body.dataset.mode = 'endless';
+    this.resetMotionBlur();
     this.sound.setPlayingState(true);
     this.updateChaseCamera(0.05);
     this.updateLightingAndSky();
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame();
     this.emitHud();
   }
 
@@ -825,9 +847,10 @@ export class GameEngine {
     this.currentFov = 60;
     this.camera.fov = 60;
     this.camera.updateProjectionMatrix();
+    this.resetMotionBlur();
     this.updateAdventurePreview(0.016);
     this.updateLightingAndSky();
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame();
   }
 
   public exitAdventurePreview(): void {
@@ -874,10 +897,11 @@ export class GameEngine {
 
     document.body.dataset.state = 'playing';
     document.body.dataset.mode = 'adventure';
+    this.resetMotionBlur();
     this.sound.setPlayingState(true);
-    this.updateAdventureCamera(0.05);
+    this.updateAdventureCamera(0.05, true);
     this.updateLightingAndSky();
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame();
     this.emitAdventureHud();
   }
 
@@ -908,8 +932,10 @@ export class GameEngine {
 
     document.body.dataset.state = 'playing';
     document.body.dataset.mode = 'adventure';
+    this.resetMotionBlur();
     this.sound.setPlayingState(true);
-    this.updateAdventureCamera(0.05);
+    this.updateAdventureCamera(0.05, true);
+    this.renderFrame();
     this.emitAdventureHud();
   }
 
@@ -941,6 +967,7 @@ export class GameEngine {
     this.touchThrottle = 0;
     this.adventureTouchInput = {};
     document.body.dataset.state = 'paused';
+    this.resetMotionBlur();
     this.sound.setPlayingState(false);
   }
 
@@ -978,6 +1005,7 @@ export class GameEngine {
     this.camera.lookAt(-1.25, 0.92, -0.15);
     document.body.dataset.state = 'title';
     document.body.dataset.mode = 'endless';
+    this.resetMotionBlur();
     this.sound.setPlayingState(false);
   }
 
@@ -1084,8 +1112,12 @@ export class GameEngine {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    if (this.composer && !this.isSoftwareGl) {
+      this.composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.composer.setSize(w, h);
+    }
     if (this.scene && this.camera) {
-      this.renderer.render(this.scene, this.camera);
+      this.renderFrame();
     }
   }
 
@@ -1164,22 +1196,22 @@ export class GameEngine {
       if (m) m.rotation.y += dt * 2.5;
     }
 
-    const portrait = this.camera.aspect < 0.95;
-    const orbit = Math.sin(this.elapsed * 0.35) * 0.55;
+    const compact = this.camera.aspect < 1.05;
+    const orbit = Math.sin(this.elapsed * 0.35) * 0.45;
     const lookAheadSample = sampleAdventureTerrain(
       this.adventureCourse,
       getTrailCenterX(lvl, this.adventurePreviewD + 7),
       -(this.adventurePreviewD + 7),
     );
     this.camera.position.set(
-      this.playerX - (portrait ? 1.8 : 2.5) + orbit * 0.4,
-      this.playerY + 2.35,
-      this.playerZ + 4.9,
+      this.playerX - (compact ? 1.35 : 2.1) + orbit * 0.35,
+      this.playerY + (compact ? 2.25 : 2.15),
+      this.playerZ + (compact ? 5.2 : 4.7),
     );
     this.camera.lookAt(
-      this.playerX - (portrait ? 0.15 : 1.95),
-      Math.max(this.playerY - 1.5, lookAheadSample.groundY + 0.85),
-      this.playerZ - 6.5,
+      this.playerX - (compact ? 0.05 : 1.45),
+      Math.max(this.playerY - 1.2, lookAheadSample.groundY + 0.9),
+      this.playerZ - 6.0,
     );
   }
 
@@ -1402,7 +1434,7 @@ export class GameEngine {
     }
   }
 
-  private updateAdventureCamera(dt: number): void {
+  private updateAdventureCamera(dt: number, snap = false): void {
     if (!this.adventureSim) return;
     const s = this.adventureSim;
     const portraitFactor =
@@ -1449,8 +1481,10 @@ export class GameEngine {
       lookY = 0.3;
     }
 
-    this.currentFov = THREE.MathUtils.damp(this.currentFov, targetFov, 5.5, dt);
-    if (Math.abs(this.camera.fov - this.currentFov) > 0.05) {
+    this.currentFov = snap
+      ? targetFov
+      : THREE.MathUtils.damp(this.currentFov, targetFov, 5.5, dt);
+    if (snap || Math.abs(this.camera.fov - this.currentFov) > 0.05) {
       this.camera.fov = this.currentFov;
       this.camera.updateProjectionMatrix();
     }
@@ -1461,18 +1495,22 @@ export class GameEngine {
       s.z + offsetZ + portraitFactor * 1.1,
     );
 
-    if (this.cameraTrauma > 0) {
+    if (!snap && this.cameraTrauma > 0) {
       this.cameraTrauma = Math.max(0, this.cameraTrauma - dt * 1.9);
       const shake = this.cameraTrauma * this.cameraTrauma * 0.35;
       this._camPos.x += (Math.random() - 0.5) * shake;
       this._camPos.y += (Math.random() - 0.5) * shake;
     }
 
-    this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, this._camPos.x, 8.5, dt);
-    this.camera.position.y = THREE.MathUtils.damp(this.camera.position.y, this._camPos.y, 7.0, dt);
-    this.camera.position.z = this._camPos.z;
+    if (snap) {
+      this.camera.position.copy(this._camPos);
+    } else {
+      this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, this._camPos.x, 10.5, dt);
+      this.camera.position.y = THREE.MathUtils.damp(this.camera.position.y, this._camPos.y, 8.0, dt);
+      this.camera.position.z = this._camPos.z;
+    }
 
-    this._camTarget.set(s.x * 0.9, s.y + lookY, s.z + lookAheadZ);
+    this._camTarget.set(s.x, s.y + lookY, s.z + lookAheadZ);
     this.camera.lookAt(this._camTarget);
   }
 
@@ -1609,9 +1647,59 @@ export class GameEngine {
     this.updateParticles(dt);
     this.updateAmbientPickups(dt);
     this.updateLightingAndSky();
+    this.updateMotionBlur(dt);
 
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame();
     this.scheduleNextTick();
+  }
+
+  private resetMotionBlur(): void {
+    this.motionBlurState = { ...ZERO_MOTION_BLUR };
+    if (this.motionBlurPass) {
+      syncMotionBlurPass(this.motionBlurPass, this.motionBlurState, this.camera.aspect);
+    }
+    document.body.dataset.motionBlur = '0.000';
+  }
+
+  private updateMotionBlur(dt: number): void {
+    let target = ZERO_MOTION_BLUR;
+    if (this.gameState === 'playing' && !this.isCrashing) {
+      if (this.experienceMode === 'adventure' && this.adventureSim) {
+        target = computeMotionBlurState({
+          active: true,
+          isCrashed: false,
+          speedMps: this.adventureSim.speedMps,
+          lateralVx: this.adventureSim.vx,
+          verticalVy: this.adventureSim.vy,
+          isBoosting: this.adventureSim.isBoosting,
+          cameraMode: this.adventureCameraMode,
+        });
+      } else if (this.experienceMode === 'endless') {
+        target = computeMotionBlurState({
+          active: true,
+          isCrashed: false,
+          speedMps: this.speedMps,
+          lateralVx: this.playerVx,
+          verticalVy: this.playerVy,
+          isBoosting: this.powerTimers.has('speed_boost'),
+          isSlowMotion: this.powerTimers.has('slow_motion'),
+        });
+      }
+    }
+
+    this.motionBlurState = dampMotionBlurState(this.motionBlurState, target, dt);
+    if (this.motionBlurPass) {
+      syncMotionBlurPass(this.motionBlurPass, this.motionBlurState, this.camera.aspect);
+    }
+    document.body.dataset.motionBlur = this.motionBlurState.intensity.toFixed(3);
+  }
+
+  private renderFrame(): void {
+    if (this.composer && !this.isSoftwareGl) {
+      this.composer.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   private updateTitleShowcase(dt: number): void {
@@ -2410,6 +2498,8 @@ export class GameEngine {
     this.cyclistShadow.geometry.dispose();
     (this.cyclistShadow.material as THREE.Material).dispose();
     this.scene.environment?.dispose();
+    this.motionBlurPass?.dispose();
+    this.composer?.dispose();
     this.renderer.dispose();
     if (this.renderer.domElement.parentNode === this.container) {
       this.container.removeChild(this.renderer.domElement);

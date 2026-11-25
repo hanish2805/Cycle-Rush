@@ -56,7 +56,7 @@ function createTrailSurfaceTexture(area: AdventureAreaSpec, maxAniso: number): T
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(8, 80);
+  tex.repeat.set(14, 80);
   tex.anisotropy = maxAniso;
   return tex;
 }
@@ -126,7 +126,7 @@ export function buildAdventureWorldVisuals(
   const zStep = isSoftwareGl ? 3.0 : 2.0;
   const zRows = Math.ceil((length + 34) / zStep) + 1;
   const latOffsets = [
-    -26, -16, -9.5, -5.6, -3.5, -2.1, -0.8, 0, 0.8, 2.1, 3.5, 5.6, 9.5, 16, 26,
+    -54, -36, -24, -15, -9, -5.4, -3.2, -1.8, -0.7, 0, 0.7, 1.8, 3.2, 5.4, 9, 15, 24, 36, 54,
   ];
   const cols = latOffsets.length;
 
@@ -198,7 +198,7 @@ export function buildAdventureWorldVisuals(
       colors[idx * 3 + 1] = tmpCol.g;
       colors[idx * 3 + 2] = tmpCol.b;
 
-      uvs[idx * 2] = (lat + 26) / 52;
+      uvs[idx * 2] = (lat + 54) / 108;
       uvs[idx * 2 + 1] = d / length;
     }
   }
@@ -253,7 +253,7 @@ export function buildAdventureWorldVisuals(
     );
     for (const b of course.bridges) {
       const bMid = (b.dStart + b.dEnd) * 0.5;
-      const riverGeo = track(new THREE.PlaneGeometry(46, b.dEnd - b.dStart + 14));
+      const riverGeo = track(new THREE.PlaneGeometry(96, b.dEnd - b.dStart + 18));
       riverGeo.rotateX(-Math.PI / 2);
       const river = new THREE.Mesh(riverGeo, floorMat);
       river.position.set(b.xCenter, getBaseElevation(course.level, bMid) - 6.2, -bMid);
